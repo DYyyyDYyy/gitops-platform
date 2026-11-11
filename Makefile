@@ -10,10 +10,18 @@ APP_REF     ?= fd3fea549ecb92ee7ff98fd5638e0ccfcbc4aabc
 IMAGE_TAG   := $(shell awk '/^  tag:/{print $$2; exit}' apps/transport-api/values.yaml)
 IMAGE       := transport-api:$(IMAGE_TAG)
 GIT_REV     ?= main
+# LOCAL_GIT=1: Argo CD reads this working copy's commits via a git daemon container (no GitHub needed)
+LOCAL_GIT   ?= 0
+ifeq ($(LOCAL_GIT),1)
+REPO_URL    := git://gitops-git/repo
+else
+REPO_URL    ?= https://github.com/DYyyyDYyy/gitops-platform.git
+endif
+TF_VARS      = -var git_revision=$(GIT_REV) -var repo_url=$(REPO_URL)
 KUBECONFIG  := $(CURDIR)/.kube/config
 export KUBECONFIG
 
-.PHONY: tools up down status test lint image secrets wait
+.PHONY: tools up down status test lint image secrets wait local-git
 
 tools: ## install pinned CLIs into ~/.local/bin
 	./scripts/install-tools.sh
@@ -25,11 +33,12 @@ image: ## build demo API image
 up: image ## cluster from zero to working platform
 	terraform -chdir=$(TF_DIR) init -input=false
 	# 1) cluster + namespaces, 2) image and secrets in place, 3) Argo CD takes over from git
-	terraform -chdir=$(TF_DIR) apply -input=false -auto-approve -var git_revision=$(GIT_REV) \
+	terraform -chdir=$(TF_DIR) apply -input=false -auto-approve $(TF_VARS) \
 	  -target=kubernetes_namespace_v1.apps -target=kubernetes_namespace_v1.monitoring
+	if [ "$(LOCAL_GIT)" = 1 ]; then $(MAKE) local-git; fi
 	kind load docker-image $(IMAGE) --name $(CLUSTER)
 	./scripts/secrets.sh
-	terraform -chdir=$(TF_DIR) apply -input=false -auto-approve -var git_revision=$(GIT_REV)
+	terraform -chdir=$(TF_DIR) apply -input=false -auto-approve $(TF_VARS)
 	./scripts/wait.sh
 
 secrets: ## decrypt SOPS secrets into the cluster (ephemeral random ones if no age key, e.g. in CI)
@@ -38,7 +47,13 @@ secrets: ## decrypt SOPS secrets into the cluster (ephemeral random ones if no a
 wait: ## wait until all Argo CD apps are Synced/Healthy and API answers
 	./scripts/wait.sh
 
+local-git: ## serve this repo read-only on the kind docker network
+	-docker rm -f gitops-git >/dev/null 2>&1
+	docker run -d --name gitops-git --network kind -v $(CURDIR):/repo:ro alpine/git:v2.54.0 \
+	  -c safe.directory='*' daemon --export-all --base-path=/ --reuseaddr /repo
+
 down: ## destroy the cluster completely (everything in it is disposable; state is local)
+	-docker rm -f gitops-git >/dev/null 2>&1
 	kind delete cluster --name $(CLUSTER)
 	rm -f $(TF_DIR)/terraform.tfstate $(TF_DIR)/terraform.tfstate.backup .kube/config
 

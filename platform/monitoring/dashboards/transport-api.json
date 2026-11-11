@@ -1,0 +1,73 @@
+{
+  "uid": "transport-api",
+  "title": "Transport API",
+  "tags": ["apps", "gitops-platform"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Requests per second by status",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (status) (rate(http_requests_total{namespace=\"apps\"}[2m]))", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Latency p50 / p95",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.5, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"apps\"}[5m])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"apps\"}[5m])))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 3, "type": "stat", "title": "5xx ratio (5m)",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.05 } ] } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_requests_total{namespace=\"apps\",status=\"5xx\"}[5m])) / clamp_min(sum(rate(http_requests_total{namespace=\"apps\"}[5m])), 1e-9)" }
+      ]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Ready replicas",
+      "gridPos": { "x": 6, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "kube_deployment_status_replicas_ready{namespace=\"apps\",deployment=\"transport-api\"}" }
+      ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "CPU (cores) per pod",
+      "gridPos": { "x": 12, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"apps\",container!=\"\"}[2m]))", "legendFormat": "{{pod}}" }
+      ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Memory per pod",
+      "gridPos": { "x": 18, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"apps\",container!=\"\"})", "legendFormat": "{{pod}}" }
+      ]
+    },
+    {
+      "id": 7, "type": "logs", "title": "API logs (Loki)",
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "expr": "{namespace=\"apps\", container=\"api\"}" }
+      ]
+    }
+  ]
+}

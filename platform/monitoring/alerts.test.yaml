@@ -1,0 +1,30 @@
+# promtool unit tests; scripts/lint.sh extracts the rule groups from alerts.yaml.
+rule_files:
+  - rules.yaml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="apps",pod="api-1",container="api",reason="CrashLoopBackOff"}'
+        values: "1x5"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PodCrashLooping
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: apps, pod: api-1, container: api }
+            exp_annotations:
+              summary: "apps/api-1 (api) is in CrashLoopBackOff"
+  - interval: 1m
+    input_series:
+      # 0.95 CPU-seconds per second against a 1-core limit
+      - series: 'container_cpu_usage_seconds_total{namespace="apps",pod="api-1",container="api"}'
+        values: "0+57x15"
+      - series: 'kube_pod_container_resource_limits{namespace="apps",pod="api-1",container="api",resource="cpu"}'
+        values: "1x15"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ContainerHighCPU
+        exp_alerts:
+          - exp_labels: { severity: warning, namespace: apps, pod: api-1, container: api }
+            exp_annotations:
+              summary: "apps/api-1 uses 95% of its CPU limit"

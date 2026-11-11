@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: platform-alerts
+spec:
+  groups:
+    - name: platform.rules
+      rules:
+        - alert: PodCrashLooping
+          expr: max by (namespace, pod, container) (kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}) == 1
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is in CrashLoopBackOff"
+        - alert: ContainerHighCPU
+          expr: |
+            sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))
+              /
+            sum by (namespace, pod, container) (kube_pod_container_resource_limits{resource="cpu"})
+              > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} uses {{ $value | humanizePercentage }} of its CPU limit"

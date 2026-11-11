@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - name: Install pinned tools
+        run: |
+          ./scripts/install-tools.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: terraform fmt/validate, helm lint, kubeconform, kyverno test, promtool
+        run: ./scripts/lint.sh
+      - name: terraform plan
+        run: |
+          terraform -chdir=terraform init -input=false
+          terraform -chdir=terraform plan -input=false -var git_revision=${{ github.sha }}
+
+  e2e:
+    needs: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      KUBECONFIG: ${{ github.workspace }}/.kube/config
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned tools
+        run: |
+          ./scripts/install-tools.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      # Argo CD syncs this exact commit from GitHub; secrets are ephemeral (no age key in CI).
+      - name: make up
+        run: make up GIT_REV=${{ github.sha }}
+      - name: make test
+        run: ./scripts/smoke.sh
+      - name: Debug on failure
+        if: failure()
+        run: |
+          export KUBECONFIG=$PWD/.kube/config
+          kubectl -n argocd get applications -o wide || true
+          kubectl get pods -A || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -50 || true

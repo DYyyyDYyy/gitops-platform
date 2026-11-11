@@ -40,6 +40,10 @@ make down    # delete everything
 | http://argocd.localhost | Argo CD |
 | http://grafana.localhost | Grafana, dashboard "Transport API" |
 
+| Argo CD | Grafana |
+|---|---|
+| ![Argo CD](docs/img/argocd.png) | ![Grafana](docs/img/grafana.png) |
+
 ## Layout
 
 | Path | Contents |

@@ -33,7 +33,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.05 } ] } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum(rate(http_requests_total{namespace=\"apps\",status=\"5xx\"}[5m])) / clamp_min(sum(rate(http_requests_total{namespace=\"apps\"}[5m])), 1e-9)" }
+        { "refId": "A", "expr": "(sum(rate(http_requests_total{namespace=\"apps\",status=\"5xx\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_requests_total{namespace=\"apps\"}[5m])), 1e-9)" }
       ]
     },
     {

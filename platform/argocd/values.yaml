@@ -1,0 +1,51 @@
+# Argo CD bootstrap values (installed once by Terraform).
+global:
+  domain: argocd.localhost
+
+configs:
+  params:
+    server.insecure: true # TLS terminates at ingress-nginx; local only
+  cm:
+    timeout.reconciliation: 60s
+    # Let app-of-apps waves wait for child Application health.
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+      return hs
+
+dex:
+  enabled: false
+notifications:
+  enabled: false
+applicationSet:
+  replicas: 0
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+repoServer:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+redis:
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { memory: 128Mi }

@@ -49,7 +49,7 @@ wait: ## wait until all Argo CD apps are Synced/Healthy and API answers
 
 local-git: ## serve this repo read-only on the kind docker network
 	-docker rm -f gitops-git >/dev/null 2>&1
-	docker run -d --name gitops-git --network kind -v $(CURDIR):/repo:ro alpine/git:v2.54.0 \
+	docker run -d --name gitops-git --network kind -v "$(CURDIR):/repo:ro" alpine/git:v2.54.0 \
 	  -c safe.directory='*' daemon --export-all --base-path=/ --reuseaddr /repo
 
 down: ## destroy the cluster completely (everything in it is disposable; state is local)

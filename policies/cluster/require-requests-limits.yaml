@@ -1,0 +1,42 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-requests-limits
+  annotations:
+    policies.kyverno.io/description: Containers must set CPU/memory requests and a memory limit.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    # only namespaces opted in by Terraform (apps); platform charts are not ours to police
+    namespaceSelector:
+      matchLabels:
+        policy.platform.local/enforce: "true"
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets, daemonsets]
+      - apiGroups: [batch]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [jobs, cronjobs]
+  variables:
+    - name: podSpec
+      expression: >-
+        object.kind == 'CronJob' ? object.spec.jobTemplate.spec.template.spec :
+        (object.kind == 'Pod' ? object.spec : object.spec.template.spec)
+    - name: containers
+      expression: variables.podSpec.containers + variables.podSpec.?initContainers.orValue([])
+  validations:
+    - expression: >-
+        variables.containers.all(c,
+        has(c.resources) && has(c.resources.requests) && has(c.resources.limits) &&
+        'cpu' in c.resources.requests && 'memory' in c.resources.requests && 'memory' in c.resources.limits)
+      message: "Containers must set resources.requests.cpu, resources.requests.memory and resources.limits.memory."

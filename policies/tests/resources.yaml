@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: good, namespace: apps }
+spec:
+  selector: { matchLabels: { app: good } }
+  template:
+    metadata: { labels: { app: good } }
+    spec:
+      securityContext: { runAsNonRoot: true }
+      containers:
+        - name: app
+          image: transport-api:fd3fea5
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { memory: 128Mi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: bad-latest, namespace: apps }
+spec:
+  selector: { matchLabels: { app: bad } }
+  template:
+    metadata: { labels: { app: bad } }
+    spec:
+      securityContext: { runAsNonRoot: true }
+      containers:
+        - name: app
+          image: nginx:latest
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { memory: 128Mi } }
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: bad-untagged-no-resources-root, namespace: apps }
+spec:
+  containers:
+    - name: app
+      image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: bad-container-root, namespace: apps }
+spec:
+  securityContext: { runAsNonRoot: true }
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext: { runAsNonRoot: false }
+      resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { memory: 128Mi } }

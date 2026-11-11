@@ -1,0 +1,19 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: platform-policies
+policies:
+  - ../cluster/disallow-latest-tag.yaml
+  - ../cluster/require-requests-limits.yaml
+  - ../cluster/require-run-as-nonroot.yaml
+resources:
+  - resources.yaml
+variables: values.yaml
+results:
+  - { isValidatingPolicy: true, policy: disallow-latest-tag, kind: Deployment, resources: [good], result: pass }
+  - { isValidatingPolicy: true, policy: disallow-latest-tag, kind: Deployment, resources: [bad-latest], result: fail }
+  - { isValidatingPolicy: true, policy: disallow-latest-tag, kind: Pod, resources: [bad-untagged-no-resources-root], result: fail }
+  - { isValidatingPolicy: true, policy: require-requests-limits, kind: Deployment, resources: [good, bad-latest], result: pass }
+  - { isValidatingPolicy: true, policy: require-requests-limits, kind: Pod, resources: [bad-untagged-no-resources-root], result: fail }
+  - { isValidatingPolicy: true, policy: require-run-as-nonroot, kind: Deployment, resources: [good], result: pass }
+  - { isValidatingPolicy: true, policy: require-run-as-nonroot, kind: Pod, resources: [bad-untagged-no-resources-root, bad-container-root], result: fail }

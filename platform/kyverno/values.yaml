@@ -1,0 +1,17 @@
+# Single replicas: local cluster, 6 GB budget.
+admissionController:
+  replicas: 1
+  container:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 384Mi }
+backgroundController:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 128Mi }
+cleanupController:
+  enabled: false
+reportsController:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }

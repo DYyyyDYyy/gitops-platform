@@ -1,0 +1,59 @@
+# Overridden by the root Application (Terraform var git_revision).
+repoURL: https://github.com/DYyyyDYyy/gitops-platform.git
+targetRevision: main
+
+# One Argo CD Application per entry. `chart` = external Helm chart with values from this repo,
+# `path` = directory in this repo. Lower wave syncs first.
+apps:
+  ingress-nginx:
+    wave: 0
+    namespace: ingress-nginx
+    createNamespace: true
+    repo: https://kubernetes.github.io/ingress-nginx
+    chart: ingress-nginx
+    version: 4.15.1
+  metrics-server:
+    wave: 0
+    namespace: kube-system
+    repo: https://kubernetes-sigs.github.io/metrics-server
+    chart: metrics-server
+    version: 3.14.0
+  kyverno:
+    wave: 0
+    namespace: kyverno
+    createNamespace: true
+    serverSideApply: true
+    repo: https://kyverno.github.io/kyverno
+    chart: kyverno
+    version: 3.9.2
+  kube-prometheus-stack:
+    wave: 1
+    namespace: monitoring
+    serverSideApply: true
+    repo: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    version: 93.2.0
+  loki:
+    wave: 1
+    namespace: monitoring
+    repo: https://grafana.github.io/helm-charts
+    chart: loki
+    version: 7.6.0
+  promtail:
+    wave: 2
+    namespace: monitoring
+    repo: https://grafana.github.io/helm-charts
+    chart: promtail
+    version: 6.17.1
+  policies:
+    wave: 2
+    namespace: kyverno
+    path: policies/cluster
+  monitoring-config:
+    wave: 2
+    namespace: monitoring
+    path: platform/monitoring
+  transport-api:
+    wave: 3
+    namespace: apps
+    path: apps/transport-api

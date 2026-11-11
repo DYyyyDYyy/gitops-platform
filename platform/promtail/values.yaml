@@ -1,0 +1,6 @@
+config:
+  clients:
+    - url: http://loki.monitoring.svc:3100/loki/api/v1/push
+resources:
+  requests: { cpu: 20m, memory: 48Mi }
+  limits: { memory: 128Mi }

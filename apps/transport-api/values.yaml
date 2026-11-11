@@ -1,0 +1,26 @@
+image:
+  repository: transport-api
+  tag: fd3fea5 # short SHA of rest-api-transport-firm; built locally and `kind load`-ed
+  pullPolicy: IfNotPresent
+
+# Secret is not in git as plaintext: secrets/transport-db.enc.yaml (SOPS) -> `make secrets`
+dbSecret: transport-db
+
+resources:
+  requests: { cpu: 50m, memory: 96Mi }
+  limits: { cpu: 500m, memory: 256Mi }
+
+hpa:
+  minReplicas: 2
+  maxReplicas: 4
+  cpuUtilization: 70
+
+ingress:
+  host: api.localhost
+
+postgres:
+  image: postgres:17-alpine
+  storage: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 500m, memory: 256Mi }

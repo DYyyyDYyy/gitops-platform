@@ -1,0 +1,6 @@
+apiVersion: v2
+name: transport-api
+description: Transport Firm REST API (FastAPI) with its PostgreSQL
+type: application
+version: 0.1.0
+appVersion: fd3fea5

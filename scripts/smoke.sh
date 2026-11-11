@@ -18,7 +18,13 @@ apiVersion: v1
 kind: Pod
 metadata: { name: bad, namespace: apps }
 spec:
-  containers: [{ name: c, image: "nginx:latest" }]
+  # PSS-restricted compliant, so the only violation is Kyverno's no-latest rule
+  securityContext: { runAsNonRoot: true, runAsUser: 10001, seccompProfile: { type: RuntimeDefault } }
+  containers:
+    - name: c
+      image: "nginx:latest"
+      resources: { requests: { cpu: 10m, memory: 16Mi }, limits: { memory: 32Mi } }
+      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
 EOF
 ); then fail "bad pod was admitted"; fi
 grep -q disallow-latest-tag <<<"$out" || fail "rejected, but not by Kyverno: $out"
@@ -32,8 +38,7 @@ curl -fsS -u "admin:$pw" -H 'Host: grafana.localhost' http://127.0.0.1/api/dashb
 echo "== Prometheus scrapes the API and has our rules"
 kubectl -n monitoring get prometheusrule platform-alerts >/dev/null || fail "rules"
 q='up{namespace="apps",service="transport-api"}'
-kubectl -n monitoring exec sts/prometheus-kube-prometheus-stack-prometheus -c prometheus -- \
-  wget -qO- "http://localhost:9090/api/v1/query?query=$(jq -rn --arg q "$q" '$q|@uri')" \
+kubectl get --raw "/api/v1/namespaces/monitoring/services/kube-prometheus-stack-prometheus:9090/proxy/api/v1/query?query=$(jq -rn --arg q "$q" '$q|@uri')" \
   | jq -e '[.data.result[] | select(.value[1]=="1")] | length >= 1' >/dev/null || fail "API not scraped"
 
 echo "smoke OK"

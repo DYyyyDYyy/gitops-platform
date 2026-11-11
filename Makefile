@@ -21,7 +21,7 @@ TF_VARS      = -var git_revision=$(GIT_REV) -var repo_url=$(REPO_URL)
 KUBECONFIG  := $(CURDIR)/.kube/config
 export KUBECONFIG
 
-.PHONY: tools up down status test lint image secrets wait local-git
+.PHONY: tools up down status test lint image secrets wait local-git local-push
 
 tools: ## install pinned CLIs into ~/.local/bin
 	./scripts/install-tools.sh
@@ -47,10 +47,16 @@ secrets: ## decrypt SOPS secrets into the cluster (ephemeral random ones if no a
 wait: ## wait until all Argo CD apps are Synced/Healthy and API answers
 	./scripts/wait.sh
 
-local-git: ## serve this repo read-only on the kind docker network
+local-git: ## git daemon container on the kind network; pushes HEAD there as main
 	-docker rm -f gitops-git >/dev/null 2>&1
-	docker run -d --name gitops-git --network kind -v "$(CURDIR):/repo:ro" alpine/git:v2.54.0 \
-	  -c safe.directory='*' daemon --export-all --base-path=/ --reuseaddr /repo
+	docker run -d --name gitops-git --network kind -p 127.0.0.1:9418:9418 alpine:3.22 sh -c \
+	  "apk add -q --no-cache git-daemon && git init -q --bare /srv/repo && \
+	   exec git daemon --export-all --enable=receive-pack --base-path=/srv --reuseaddr"
+	for i in $$(seq 30); do git ls-remote git://127.0.0.1/repo >/dev/null 2>&1 && break; sleep 1; done
+	$(MAKE) local-push
+
+local-push: ## publish new commits to the local git daemon (Argo CD picks them up)
+	git push -q git://127.0.0.1/repo HEAD:refs/heads/main
 
 down: ## destroy the cluster completely (everything in it is disposable; state is local)
 	-docker rm -f gitops-git >/dev/null 2>&1

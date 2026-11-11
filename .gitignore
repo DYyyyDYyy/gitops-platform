@@ -1,0 +1,20 @@
+# terraform: local state on purpose, never committed
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+.kube/
+
+# secrets: only *.enc.yaml (SOPS) may be committed
+.env
+*.pem
+*.agekey
+keys.txt
+secrets/*.yaml
+!secrets/*.enc.yaml
+
+__pycache__/
+
+# local agent tooling, not part of the project
+.claude/
+інструкція.md
